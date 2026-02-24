@@ -8,15 +8,35 @@ const REPO_URL = process.env.REPO_URL;
 
 process.chdir("/app"); // 🔑 FORCE cwd
 
+if (!REPO_URL) {
+  console.error("[supervisor] REPO_URL env var is required");
+  process.exit(1);
+}
+
 console.log("[supervisor] ensuring git repo");
 
+const run = (cmd) => execSync(cmd, { stdio: "inherit", cwd: "/app" });
+
+// Set or update origin URL so the poller always targets the requested repo
 if (!fs.existsSync(".git")) {
-  execSync("git init", { stdio: "inherit", cwd: "/app" });
-  execSync(`git remote add origin ${REPO_URL}`, { stdio: "inherit", cwd: "/app" });
-  execSync("git fetch origin --depth=1", { stdio: "inherit", cwd: "/app" });
-  execSync(`git reset --hard origin/${BRANCH}`, { stdio: "inherit", cwd: "/app" });
-  execSync("git clean -fd", { stdio: "inherit", cwd: "/app" });
+  run("git init");
+  run(`git remote add origin ${REPO_URL}`);
+} else {
+  try {
+    const currentRemote = execSync("git remote get-url origin", { cwd: "/app" })
+      .toString()
+      .trim();
+    if (currentRemote !== REPO_URL) {
+      run(`git remote set-url origin ${REPO_URL}`);
+    }
+  } catch {
+    run(`git remote add origin ${REPO_URL}`);
+  }
 }
+
+run("git fetch origin --depth=1");
+run(`git reset --hard origin/${BRANCH}`);
+run("git clean -fd");
 
 console.log("[supervisor] static preview running");
 

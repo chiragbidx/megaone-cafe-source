@@ -20,7 +20,7 @@ export async function startGitPoll() {
 
   async function poll() {
     try {
-      await run("git fetch origin");
+      await run(`git fetch --depth=1 --prune origin ${BRANCH}`);
       const sha = await run(`git rev-parse origin/${BRANCH}`);
 
       if (sha !== lastSha) {
